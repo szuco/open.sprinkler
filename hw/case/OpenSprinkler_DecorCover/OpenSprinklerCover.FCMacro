@@ -1,0 +1,317 @@
+# -*- coding: utf-8 -*-
+"""
+OpenSprinkler Design-Abdeckhaube (2-teilig, parametrisch)
+=========================================================
+
+Erzeugt eine dekorative Haube, die von vorn über das Standardgehäuse des
+OpenSprinkler v3 gesteckt wird und die unteren und seitlichen Anschlüsse,
+die Montagelaschen und die Verkabelung sauber verdeckt.
+
+Teile:
+  1. CoverFrame  – Rahmen/Haube (Druck: Frontseite auf dem Druckbett,
+                   keine Stützen nötig)
+  2. FrontPlate  – Frontplatte mit erhabenem "OpenSprinkler"-Relief
+                   (Druck: flach, Schrift nach oben)
+
+Die Frontplatte wird nach dem Druck von hinten in den Falz des Rahmens
+geklebt (1,5 mm Schattenfuge zur Rahmenkante).
+
+Gemessen an der STEP-Datei opensprinkler3_v35.stp:
+  Gehäusekörper 138,3 x 98,3 x 28,2 mm, Rückplatte mit Laschen 162 x 99,7 mm,
+  Gesamttiefe 35,4 mm. Alle Werte unten sind anpassbar.
+
+Verwendung:
+  - In FreeCAD:  Makro -> Makros... -> ausführen, oder
+  - Headless:    freecadcmd OpenSprinklerCover.FCMacro
+"""
+
+import os
+import FreeCAD as App
+import Part
+from FreeCAD import Vector
+
+# =========================================================================
+# PARAMETER (alle Angaben in mm)
+# =========================================================================
+
+# --- Maße des OpenSprinkler-Gehäuses (Hüllmaß inkl. Montagelaschen) ---
+CASE_W = 162.1     # Breite inkl. Wand-Montagelaschen
+CASE_H = 99.8      # Höhe
+CASE_D = 35.5      # Tiefe (Frontfläche bis Wand)
+
+# --- Haube ---
+CLEAR_SIDE   = 2.0   # seitliches Spiel links/rechts
+RIB_H        = 2.0   # Höhe der Auflagerippen (Haube hängt damit auf dem Gehäuse)
+SKIRT        = 21.0  # Schürze: so weit reicht die Haube unter das Gehäuse
+                     # (verdeckt Klemmen und Kabelabgänge)
+WALL         = 3.0   # Wandstärke
+R_OUT        = 8.0   # Außenradius der senkrechten Kanten
+R_IN         = 5.0   # Innenradius (Falz / Frontplatte)
+CHAMFER_F    = 1.5   # Fase an der vorderen Außenkante
+SEAT_DEPTH   = 4.5   # Falztiefe fuer die Frontplatte
+LEDGE        = 2.0   # Auflagesteg-Breite fuer die Frontplatte (oben+unten)
+BACK_GAP     = 0.5   # Luft zwischen Gehäuserückseite und Wandanlage
+
+# --- Frontplatte ---
+PLATE_T      = 3.0   # Plattendicke
+PLATE_CLEAR  = 0.25  # Spiel Platte <-> Falz (pro Seite)
+
+# --- Relief-Schriftzug ---
+TEXT         = "OpenSprinkler"
+TEXT_SIZE    = 13.0  # Schriftgroesse
+TEXT_RELIEF  = 1.4   # Erhabenheit des Reliefs
+TEXT_STYLE   = "raised"   # "raised" = erhaben, "engraved" = vertieft
+FONT_CANDIDATES = [
+    "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf",  # macOS
+    "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",        # macOS
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",          # macOS
+    "C:/Windows/Fonts/ARLRDBD.TTF",                               # Windows
+    "C:/Windows/Fonts/verdanab.ttf",                              # Windows
+    "C:/Windows/Fonts/arialbd.ttf",                               # Windows
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",       # Linux
+]
+FONT = ""            # optional: eigenen Font-Pfad hier fest eintragen
+
+# --- Lueftung / Kabel ---
+VENT_SLOTS     = 6     # Anzahl Lueftungsschlitze oben und unten (0 = keine)
+VENT_L         = 20.0  # Schlitzlaenge
+VENT_W         = 4.0   # Schlitzbreite
+CABLE_SLOT_W   = 140.0 # Breite des Kabelschlitzes unten hinten
+CABLE_SLOT_D   = 18.0  # Tiefe des Kabelschlitzes (von der Wand aus)
+
+# --- Export ---
+EXPORT = True        # STL + FCStd neben dem Makro ablegen
+
+# =========================================================================
+# ABGELEITETE MASSE
+# =========================================================================
+
+IN_W   = CASE_W + 2 * CLEAR_SIDE            # Innenbreite Kavitaet
+IN_H   = CASE_H + RIB_H + SKIRT             # Innenhoehe Kavitaet
+SEAT_W = IN_W                               # Falz = vordere Oeffnung
+SEAT_H = IN_H + 2 * LEDGE
+OUT_W  = IN_W + 2 * WALL                    # Aussenmasse
+OUT_H  = SEAT_H + 2 * WALL
+DEPTH  = SEAT_DEPTH + 2.0 + CASE_D + BACK_GAP
+
+xi, yi = IN_W / 2.0, IN_H / 2.0             # Kavitaet-Halbmasse
+xs, ys = SEAT_W / 2.0, SEAT_H / 2.0         # Falz-Halbmasse
+xo, yo = OUT_W / 2.0, OUT_H / 2.0           # Aussen-Halbmasse
+
+PLATE_W = SEAT_W - 2 * PLATE_CLEAR
+PLATE_H = SEAT_H - 2 * PLATE_CLEAR
+PLATE_R = R_IN - PLATE_CLEAR
+
+# =========================================================================
+# HILFSFUNKTIONEN
+# =========================================================================
+
+def rounded_box(w, h, d, r):
+    """Quader (zentriert in X/Y, z=0..d) mit verrundeten senkrechten Kanten."""
+    b = Part.makeBox(w, h, d)
+    b.translate(Vector(-w / 2.0, -h / 2.0, 0))
+    edges = []
+    for e in b.Edges:
+        v0, v1 = e.Vertexes[0].Point, e.Vertexes[1].Point
+        if abs(v0.x - v1.x) < 1e-6 and abs(v0.y - v1.y) < 1e-6:
+            edges.append(e)
+    return b.makeFillet(r, edges)
+
+
+def find_font():
+    if FONT and os.path.exists(FONT):
+        return FONT
+    for f in FONT_CANDIDATES:
+        if os.path.exists(f):
+            return f
+    return None
+
+
+def make_text_shape(doc, font):
+    """Erzeugt den Schriftzug als flaches Face-Compound in der XY-Ebene."""
+    import Draft
+    try:
+        obj = Draft.make_shapestring(TEXT, font, TEXT_SIZE)
+    except AttributeError:  # aeltere FreeCAD-Versionen
+        obj = Draft.makeShapeString(TEXT, font, TEXT_SIZE)
+    doc.recompute()
+    shape = obj.Shape.copy()
+    doc.removeObject(obj.Name)
+    return shape
+
+
+# =========================================================================
+# TEIL 1: RAHMEN / HAUBE
+# =========================================================================
+
+frame = rounded_box(OUT_W, OUT_H, DEPTH, R_OUT)
+
+# Durchgehende Kavitaet in Falzgroesse -> offener Rahmen (Tube)
+cavity = rounded_box(SEAT_W, SEAT_H, DEPTH + 2, R_IN)
+cavity.translate(Vector(0, 0, -1))
+frame = frame.cut(cavity)
+
+# Auflagestege oben + unten (bilden den Falz fuer die Frontplatte und
+# verengen die Kavitaet auf IN_H). 45-Grad-Fase an der Vorderkante,
+# damit der Rahmen ohne Stuetzen mit der Front nach unten druckbar ist.
+bar_len = 2 * (xs - R_IN)
+for sign in (+1, -1):
+    bar = Part.makeBox(bar_len, LEDGE, DEPTH - SEAT_DEPTH)
+    y0 = yi if sign > 0 else -ys
+    bar.translate(Vector(-bar_len / 2.0, y0, SEAT_DEPTH))
+    y_edge = yi if sign > 0 else -yi
+    for e in bar.Edges:
+        v0, v1 = e.Vertexes[0].Point, e.Vertexes[1].Point
+        if (abs(v0.z - SEAT_DEPTH) < 1e-6 and abs(v1.z - SEAT_DEPTH) < 1e-6
+                and abs(v0.y - y_edge) < 1e-6 and abs(v1.y - y_edge) < 1e-6):
+            bar = bar.makeChamfer(LEDGE * 0.9, [e])
+            break
+    frame = frame.fuse(bar)
+
+# Auflagerippen an der Deckenwand: die Haube haengt damit auf dem Gehaeuse
+for x in (-40.0, 40.0):
+    rib = Part.makeBox(3.0, RIB_H, DEPTH - 10.0)
+    rib.translate(Vector(x - 1.5, yi - RIB_H, 8.0))
+    frame = frame.fuse(rib)
+
+# Seitliche Zentrierrippen hinten (fuehren die Haube an den Montagelaschen)
+rib_t = CLEAR_SIDE - 0.55
+for sign in (+1, -1):
+    rib = Part.makeBox(rib_t + 0.01, 90.0, 8.0)
+    x0 = xi - rib_t if sign > 0 else -xi - 0.01
+    rib.translate(Vector(x0, -45.0, DEPTH - 12.0))
+    frame = frame.fuse(rib)
+
+frame = frame.removeSplitter()
+
+# Kabelschlitz unten hinten (Kabel laufen hinter der Schuerze zur Wand)
+slot = Part.makeBox(CABLE_SLOT_W, 12.0, CABLE_SLOT_D + 2)
+slot.translate(Vector(-CABLE_SLOT_W / 2.0, -yo - 2.0, DEPTH - CABLE_SLOT_D))
+frame = frame.cut(slot)
+
+# Lueftungsschlitze (von vorn unsichtbar): unten vorn = Einlass,
+# oben hinten = Auslass
+if VENT_SLOTS > 0:
+    pitch = VENT_L + 6.0
+    x_start = -(VENT_SLOTS * pitch - 6.0) / 2.0
+    cuts = []
+    for i in range(VENT_SLOTS):
+        x = x_start + i * pitch
+        v = Part.makeBox(VENT_L, 8.0, VENT_W)          # unten
+        v.translate(Vector(x, -yo - 1.5, 12.0))
+        cuts.append(v)
+        v = Part.makeBox(VENT_L, 8.0, VENT_W)          # oben
+        v.translate(Vector(x, yi - 0.5, DEPTH - 16.0))
+        cuts.append(v)
+    frame = frame.cut(Part.makeCompound(cuts))
+
+# Fase an der vorderen Aussenkante (Optik) + kleine Fase am Falzrand
+front_outer, front_inner = [], []
+for e in frame.Edges:
+    bb = e.BoundBox
+    if bb.ZMax < 1e-4:
+        if (bb.XMax > xs + 1 or bb.XMin < -(xs + 1)
+                or bb.YMax > ys + 1 or bb.YMin < -(ys + 1)):
+            front_outer.append(e)
+        else:
+            front_inner.append(e)
+frame = frame.makeChamfer(CHAMFER_F, front_outer)
+front_inner = [e for e in frame.Edges if e.BoundBox.ZMax < 1e-4
+               and e.BoundBox.XMax < xs + 1 and e.BoundBox.XMin > -(xs + 1)
+               and e.BoundBox.YMax < ys + 1 and e.BoundBox.YMin > -(ys + 1)]
+if front_inner:
+    frame = frame.makeChamfer(0.5, front_inner)
+
+# =========================================================================
+# TEIL 2: FRONTPLATTE MIT RELIEF
+# =========================================================================
+
+plate = rounded_box(PLATE_W, PLATE_H, PLATE_T, PLATE_R)
+
+# dekorative Fase an der oberen Aussenkante
+top_edges = [e for e in plate.Edges if e.BoundBox.ZMin > PLATE_T - 1e-4]
+plate = plate.makeChamfer(0.6, top_edges)
+
+doc = App.newDocument("OpenSprinklerCover")
+
+font = find_font()
+if font:
+    text_faces = make_text_shape(doc, font)
+    bb = text_faces.BoundBox
+    # Breite begrenzen, falls der Font sehr breit laeuft
+    max_w = PLATE_W - 30.0
+    if bb.XLength > max_w:
+        s = max_w / bb.XLength
+        m = App.Matrix()
+        m.scale(s, s, 1.0)
+        text_faces = text_faces.transformGeometry(m)
+        bb = text_faces.BoundBox
+    # zentrieren
+    text_faces.translate(Vector(-bb.XMin - bb.XLength / 2.0,
+                                -bb.YMin - bb.YLength / 2.0, 0))
+    if TEXT_STYLE == "engraved":
+        text_faces.translate(Vector(0, 0, PLATE_T - TEXT_RELIEF))
+        text_solid = text_faces.extrude(Vector(0, 0, TEXT_RELIEF + 1))
+        plate = plate.cut(text_solid)
+    else:
+        text_faces.translate(Vector(0, 0, PLATE_T))
+        text_solid = text_faces.extrude(Vector(0, 0, TEXT_RELIEF))
+        plate = plate.fuse(text_solid)
+    plate = plate.removeSplitter()
+else:
+    App.Console.PrintWarning(
+        "Kein Font gefunden - Platte ohne Schriftzug erzeugt. "
+        "Bitte FONT im Makro auf eine .ttf-Datei setzen.\n")
+
+# =========================================================================
+# DOKUMENT AUFBAUEN (Zusammenbau-Ansicht)
+# =========================================================================
+
+frame_obj = doc.addObject("Part::Feature", "CoverFrame")
+frame_obj.Shape = frame
+
+plate_obj = doc.addObject("Part::Feature", "FrontPlate")
+plate_obj.Shape = plate
+# eingebaut: um 180 Grad gedreht, Relief zeigt nach vorn (-Z),
+# Rueckseite liegt auf dem Falz bei z = SEAT_DEPTH
+plate_obj.Placement = App.Placement(
+    Vector(0, 0, SEAT_DEPTH), App.Rotation(Vector(0, 1, 0), 180))
+
+if App.GuiUp:
+    frame_obj.ViewObject.ShapeColor = (0.35, 0.55, 0.35)   # salbeigruen
+    plate_obj.ViewObject.ShapeColor = (0.92, 0.90, 0.85)   # cremeweiss
+
+doc.recompute()
+
+# =========================================================================
+# EXPORT
+# =========================================================================
+
+if EXPORT:
+    try:
+        out_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        out_dir = os.path.join(os.path.expanduser("~"),
+                               "OpenSprinklerCover_Export")
+        os.makedirs(out_dir, exist_ok=True)
+
+    doc.saveAs(os.path.join(out_dir, "OpenSprinklerCover.FCStd"))
+
+    def export_stl(shape, path):
+        try:
+            import MeshPart
+            m = MeshPart.meshFromShape(Shape=shape, LinearDeflection=0.1,
+                                       AngularDeflection=0.35)
+            m.write(path)
+        except Exception:
+            shape.exportStl(path)
+
+    # Rahmen: liegt bereits druckgerecht (Front unten, Oeffnung oben)
+    export_stl(frame, os.path.join(out_dir, "CoverFrame.stl"))
+    # Platte: druckgerecht flach, Relief nach oben
+    export_stl(plate, os.path.join(out_dir, "FrontPlate.stl"))
+
+    App.Console.PrintMessage("Export nach %s abgeschlossen.\n" % out_dir)
+
+App.Console.PrintMessage(
+    "Haube aussen: %.1f x %.1f x %.1f mm\n" % (OUT_W, OUT_H, DEPTH))
