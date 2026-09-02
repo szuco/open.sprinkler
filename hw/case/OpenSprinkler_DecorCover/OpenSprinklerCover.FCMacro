@@ -3,25 +3,29 @@
 OpenSprinkler Design-Abdeckhaube (2-teilig, parametrisch)
 =========================================================
 
-Erzeugt eine dekorative Haube, die von vorn über das Standardgehäuse des
-OpenSprinkler v3 gesteckt wird und die unteren und seitlichen Anschlüsse,
-die Montagelaschen und die Verkabelung sauber verdeckt.
+Erzeugt eine dekorative Haube, die von vorn ueber den *fertig an der Wand
+montierten* OpenSprinkler gestuelpt wird und Gehaeuse, Klemmleisten,
+Kabelbaum und Wanddurchbruch komplett verdeckt.
 
 Teile:
-  1. CoverFrame  – Rahmen/Haube (Druck: Frontseite auf dem Druckbett,
-                   keine Stützen nötig)
-  2. FrontPlate  – Frontplatte mit erhabenem "OpenSprinkler"-Relief
+  1. CoverFrame  - Rahmen/Haube (Druck: Frontseite auf dem Druckbett,
+                   keine Stuetzen noetig)
+  2. FrontPlate  - Frontplatte mit erhabenem "OpenSprinkler"-Relief
                    (Druck: flach, Schrift nach oben)
 
 Die Frontplatte wird nach dem Druck von hinten in den Falz des Rahmens
 geklebt (1,5 mm Schattenfuge zur Rahmenkante).
 
-Gemessen an der STEP-Datei opensprinkler3_v35.stp:
-  Gehäusekörper 138,3 x 98,3 x 28,2 mm, Rückplatte mit Laschen 162 x 99,7 mm,
-  Gesamttiefe 35,4 mm. Alle Werte unten sind anpassbar.
+Aufhaengung: Die Haube haengt mit zwei langen Innenrippen auf der Oberseite
+des Gehaeuses und liegt hinten an der Wand an - werkzeuglos, keine neuen
+Loecher in der Wand.
+
+WICHTIG - vor dem Druck die vier Werte im Block "MONTIERTE EINHEIT"
+nachmessen. Faustregel: lieber etwas zu gross als zu klein, die Haube wird
+davon nur unauffaellig groesser, aber sie passt sicher darueber.
 
 Verwendung:
-  - In FreeCAD:  Makro -> Makros... -> ausführen, oder
+  - In FreeCAD:  Makro -> Makros... -> ausfuehren, oder
   - Headless:    freecadcmd OpenSprinklerCover.FCMacro
 """
 
@@ -34,23 +38,32 @@ from FreeCAD import Vector
 # PARAMETER (alle Angaben in mm)
 # =========================================================================
 
-# --- Maße des OpenSprinkler-Gehäuses (Hüllmaß inkl. Montagelaschen) ---
-CASE_W = 162.1     # Breite inkl. Wand-Montagelaschen
-CASE_H = 99.8      # Höhe
-CASE_D = 35.5      # Tiefe (Frontfläche bis Wand)
+# --- MONTIERTE EINHEIT (bitte am eigenen Geraet nachmessen) --------------
+# Die Werte beschreiben nicht die Platine, sondern das, was tatsaechlich an
+# der Wand haengt - inklusive gedrucktem Gehaeuse, Rueckplatte und Laschen.
+CASE_W = 172.0   # groesste Breite (ueber die Wand-Montagelaschen gemessen)
+CASE_H = 100.0   # Hoehe des Gehaeusekoerpers, ohne die Klemmleisten
+CASE_D = 42.0    # Tiefe: Wandoberflaeche -> Frontflaeche des Gehaeuses.
+                 # Im Zweifel 3-5 mm aufschlagen: zu tief = Haube steht
+                 # etwas weiter vor, zu flach = Haube liegt nicht an der Wand.
+COVER_BELOW = 40.0  # was unterhalb der Gehaeuseunterkante verdeckt werden
+                 # soll: Klemmleisten + Kabelbogen + Wanddurchbruch,
+                 # gemessen ab Gehaeuseunterkante bis unter das Wandloch.
 
-# --- Haube ---
-CLEAR_SIDE   = 2.0   # seitliches Spiel links/rechts
-RIB_H        = 2.0   # Höhe der Auflagerippen (Haube hängt damit auf dem Gehäuse)
-SKIRT        = 21.0  # Schürze: so weit reicht die Haube unter das Gehäuse
-                     # (verdeckt Klemmen und Kabelabgänge)
-WALL         = 3.0   # Wandstärke
-R_OUT        = 8.0   # Außenradius der senkrechten Kanten
+# --- Passung / Haube ------------------------------------------------------
+CLEAR_SIDE   = 5.0   # seitliches Spiel links/rechts. 5 mm deckt auch einen
+                     # seitlich ueberstehenden Klemmverbinder (Wago) ab.
+CLEAR_DEPTH  = 1.5   # Luft zwischen Gehaeusefront und Frontplatten-Falz
+RIB_H        = 2.0   # Hoehe der Auflagerippen (Haube haengt damit auf dem
+                     # Gehaeuse; groesser = Haube sitzt hoeher)
+SKIRT_EXTRA  = 10.0  # Zugabe unter COVER_BELOW (Reserve / Optik)
+WALL         = 3.0   # Wandstaerke
+R_OUT        = 8.0   # Aussenradius der senkrechten Kanten
 R_IN         = 5.0   # Innenradius (Falz / Frontplatte)
-CHAMFER_F    = 1.5   # Fase an der vorderen Außenkante
+CHAMFER_F    = 1.5   # Fase an der vorderen Aussenkante
 SEAT_DEPTH   = 4.5   # Falztiefe fuer die Frontplatte
 LEDGE        = 2.0   # Auflagesteg-Breite fuer die Frontplatte (oben+unten)
-BACK_GAP     = 0.5   # Luft zwischen Gehäuserückseite und Wandanlage
+BACK_GAP     = 0.5   # Luft zwischen Gehaeuserueckseite und Wandanlage
 
 # --- Frontplatte ---
 PLATE_T      = 3.0   # Plattendicke
@@ -58,9 +71,10 @@ PLATE_CLEAR  = 0.25  # Spiel Platte <-> Falz (pro Seite)
 
 # --- Relief-Schriftzug ---
 TEXT         = "OpenSprinkler"
-TEXT_SIZE    = 13.0  # Schriftgroesse
+TEXT_SIZE    = 15.0  # Schriftgroesse
 TEXT_RELIEF  = 1.4   # Erhabenheit des Reliefs
 TEXT_STYLE   = "raised"   # "raised" = erhaben, "engraved" = vertieft
+TEXT_Y_OFF   = 0.0   # Schriftzug aus der Plattenmitte verschieben (+ = hoch)
 FONT_CANDIDATES = [
     "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf",  # macOS
     "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",        # macOS
@@ -76,7 +90,7 @@ FONT = ""            # optional: eigenen Font-Pfad hier fest eintragen
 VENT_SLOTS     = 6     # Anzahl Lueftungsschlitze oben und unten (0 = keine)
 VENT_L         = 20.0  # Schlitzlaenge
 VENT_W         = 4.0   # Schlitzbreite
-CABLE_SLOT_W   = 140.0 # Breite des Kabelschlitzes unten hinten
+CABLE_SLOT_W   = 150.0 # Breite des Kabelschlitzes unten hinten
 CABLE_SLOT_D   = 18.0  # Tiefe des Kabelschlitzes (von der Wand aus)
 
 # --- Export ---
@@ -86,17 +100,24 @@ EXPORT = True        # STL + FCStd neben dem Makro ablegen
 # ABGELEITETE MASSE
 # =========================================================================
 
+SKIRT  = COVER_BELOW + SKIRT_EXTRA          # Schuerze unter dem Gehaeuse
 IN_W   = CASE_W + 2 * CLEAR_SIDE            # Innenbreite Kavitaet
 IN_H   = CASE_H + RIB_H + SKIRT             # Innenhoehe Kavitaet
 SEAT_W = IN_W                               # Falz = vordere Oeffnung
 SEAT_H = IN_H + 2 * LEDGE
 OUT_W  = IN_W + 2 * WALL                    # Aussenmasse
 OUT_H  = SEAT_H + 2 * WALL
-DEPTH  = SEAT_DEPTH + 2.0 + CASE_D + BACK_GAP
+DEPTH  = SEAT_DEPTH + CLEAR_DEPTH + CASE_D + BACK_GAP
 
 xi, yi = IN_W / 2.0, IN_H / 2.0             # Kavitaet-Halbmasse
 xs, ys = SEAT_W / 2.0, SEAT_H / 2.0         # Falz-Halbmasse
 xo, yo = OUT_W / 2.0, OUT_H / 2.0           # Aussen-Halbmasse
+
+# Lage des Gehaeuses in der Kavitaet (Haube haengt auf der Gehaeuseoberseite)
+Y_CASE_TOP = yi - RIB_H
+Y_CASE_BOT = Y_CASE_TOP - CASE_H
+Z_WALL     = DEPTH - BACK_GAP               # Ebene der Wand
+Z_CASE_FRT = Z_WALL - CASE_D                # Frontflaeche des Gehaeuses
 
 PLATE_W = SEAT_W - 2 * PLATE_CLEAR
 PLATE_H = SEAT_H - 2 * PLATE_CLEAR
@@ -168,23 +189,32 @@ for sign in (+1, -1):
             break
     frame = frame.fuse(bar)
 
-# Auflagerippen an der Deckenwand: die Haube haengt damit auf dem Gehaeuse
+# Auflagerippen an der Deckenwand: die Haube haengt damit auf dem Gehaeuse.
+# Sie laufen fast ueber die gesamte Tiefe, damit sie das Gehaeuse auch dann
+# sicher treffen, wenn CASE_D grosszuegig geschaetzt wurde.
+RIB_Z0 = SEAT_DEPTH + 3.0
+RIB_Z1 = DEPTH - 18.0
 for x in (-40.0, 40.0):
-    rib = Part.makeBox(3.0, RIB_H, DEPTH - 10.0)
-    rib.translate(Vector(x - 1.5, yi - RIB_H, 8.0))
+    rib = Part.makeBox(4.0, RIB_H, RIB_Z1 - RIB_Z0)
+    rib.translate(Vector(x - 2.0, yi - RIB_H, RIB_Z0))
     frame = frame.fuse(rib)
 
-# Seitliche Zentrierrippen hinten (fuehren die Haube an den Montagelaschen)
-rib_t = CLEAR_SIDE - 0.55
+# Seitliche Zentrierrippen hinten (fuehren die Haube an den Montagelaschen).
+# Bewusst nur im oberen Bereich, damit sie seitlich abgehende Kabel oder
+# Klemmverbinder im unteren Bereich nicht beruehren.
+rib_t = min(CLEAR_SIDE - 0.55, 3.0)
+cr_y0 = Y_CASE_BOT + 0.45 * CASE_H
+cr_len = (Y_CASE_TOP - 5.0) - cr_y0
 for sign in (+1, -1):
-    rib = Part.makeBox(rib_t + 0.01, 90.0, 8.0)
+    rib = Part.makeBox(rib_t + 0.01, cr_len, 8.0)
     x0 = xi - rib_t if sign > 0 else -xi - 0.01
-    rib.translate(Vector(x0, -45.0, DEPTH - 12.0))
+    rib.translate(Vector(x0, cr_y0, DEPTH - 12.0))
     frame = frame.fuse(rib)
 
 frame = frame.removeSplitter()
 
-# Kabelschlitz unten hinten (Kabel laufen hinter der Schuerze zur Wand)
+# Kabelschlitz unten hinten (falls doch eine Leitung nach unten/hinten aus
+# der Haube heraus muss; dient zugleich als Lueftungsoeffnung)
 slot = Part.makeBox(CABLE_SLOT_W, 12.0, CABLE_SLOT_D + 2)
 slot.translate(Vector(-CABLE_SLOT_W / 2.0, -yo - 2.0, DEPTH - CABLE_SLOT_D))
 frame = frame.cut(slot)
@@ -248,7 +278,7 @@ if font:
         bb = text_faces.BoundBox
     # zentrieren
     text_faces.translate(Vector(-bb.XMin - bb.XLength / 2.0,
-                                -bb.YMin - bb.YLength / 2.0, 0))
+                                -bb.YMin - bb.YLength / 2.0 + TEXT_Y_OFF, 0))
     if TEXT_STYLE == "engraved":
         text_faces.translate(Vector(0, 0, PLATE_T - TEXT_RELIEF))
         text_solid = text_faces.extrude(Vector(0, 0, TEXT_RELIEF + 1))
@@ -314,4 +344,11 @@ if EXPORT:
     App.Console.PrintMessage("Export nach %s abgeschlossen.\n" % out_dir)
 
 App.Console.PrintMessage(
-    "Haube aussen: %.1f x %.1f x %.1f mm\n" % (OUT_W, OUT_H, DEPTH))
+    "Haube aussen : %.1f x %.1f x %.1f mm (B x H x T)\n" % (OUT_W, OUT_H, DEPTH))
+App.Console.PrintMessage(
+    "Kavitaet     : %.1f x %.1f mm, nutzbare Tiefe %.1f mm\n"
+    % (IN_W, IN_H, DEPTH - SEAT_DEPTH - CLEAR_DEPTH))
+App.Console.PrintMessage(
+    "Schuerze     : %.1f mm unter der Gehaeuseunterkante\n" % SKIRT)
+App.Console.PrintMessage(
+    "Druckbett    : mind. %.0f x %.0f mm\n" % (OUT_W + 4, OUT_H + 4))
