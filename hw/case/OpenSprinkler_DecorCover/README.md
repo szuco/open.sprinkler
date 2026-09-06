@@ -8,6 +8,34 @@ und trägt mittig den erhabenen Schriftzug **„OpenSprinkler“**.
 ![Frontansicht](preview_front.png)
 ![Rückansicht](preview_back.png)
 
+## Sitz auf dem Originalgehäuse
+
+![Zusammenbau](preview_fit.png)
+
+Explosionsdarstellung und bemaßter Schnitt. Das Originalgehäuse ist darin ein
+Ersatzkörper aus den gemessenen Maßen (170 × 100 × 25 mm, Rückplatte 3 mm) –
+keine echte Geometrie.
+
+Die Haube **klemmt nicht, sie hängt und lehnt**. Es gibt genau drei
+Kontaktstellen:
+
+1. **Zwei Auflagerippen** an der Innendecke (4 × 2 mm, bei x = ±52 mm, z =
+   7,5–33 mm) liegen auf der Oberseite des Originalgehäuses und tragen das
+   ganze Gewicht. Sie legen zugleich die Höhenlage fest.
+2. **Zwei seitliche Zentrierrippen** hinten (3 mm dick) verengen die lichten
+   180 mm auf 174 mm → bei 170 mm Gerätebreite ~2 mm Luft pro Seite. Reine
+   Führung, kein Presssitz.
+3. **Der umlaufende hintere Rand** liegt an der Wand an und verhindert das
+   Kippen.
+
+Gegen Abheben nach oben und Abziehen nach vorn hält nichts – das ist Absicht
+(werkzeuglos abnehmbar), siehe Klettband-Hinweis unter *Montage*.
+
+Der Schwerpunkt der zusammengebauten Haube liegt bei z = 10,2 mm, die
+Rippenauflage beginnt bei 25 mm Gerätetiefe erst bei z = 12 mm. Die Haube
+lehnt sich also mit dem unteren hinteren Rand an die Wand. Ab etwa 28 mm
+Gerätetiefe liegt der Schwerpunkt innerhalb der Auflage und sie steht neutral.
+
 ## Dateien
 
 | Datei | Inhalt |
@@ -16,6 +44,7 @@ und trägt mittig den erhabenen Schriftzug **„OpenSprinkler“**.
 | `OpenSprinklerCover.FCStd` | Fertiges FreeCAD-Dokument (Zusammenbau-Ansicht) |
 | `CoverFrame.stl` | Rahmen/Haube – druckfertig orientiert |
 | `FrontPlate.stl` | Frontplatte mit Relief – druckfertig orientiert |
+| `preview_fit.png` | Zusammenbau-Darstellung (Explosion + Schnitt) |
 
 ## Maßvorgaben
 
