@@ -17,44 +17,49 @@ und trägt mittig den erhabenen Schriftzug **„OpenSprinkler“**.
 | `CoverFrame.stl` | Rahmen/Haube – druckfertig orientiert |
 | `FrontPlate.stl` | Frontplatte mit Relief – druckfertig orientiert |
 
-## Vor dem Druck: vier Maße nachmessen
+## Maßvorgaben
 
-Die Haube wird über das **montierte Gerät samt Gehäuse und Rückplatte**
-gestülpt – nicht über die nackte Platine. Deshalb bitte an der Wand messen und
-die Werte oben im Makro (Block *MONTIERTE EINHEIT*) eintragen:
+Die Größe wird über drei **Mindestmaße** gesteuert (Block *MINDESTMASSE* oben
+im Makro). Sie beschreiben den Raum, den die Haube überdecken muss – nicht die
+Haube selbst. Die Zugaben darunter werden aufgeschlagen, die geforderten Werte
+sind also garantiert eingehalten.
 
-| Parameter | Bedeutung | Voreinstellung |
-|---|---|---|
-| `CASE_W` | größte Breite, über die Wand-Montagelaschen gemessen | 172 mm |
-| `CASE_H` | Höhe des Gehäusekörpers, **ohne** die Klemmleisten | 100 mm |
-| `CASE_D` | Wandoberfläche → Frontfläche des Gehäuses | 42 mm |
-| `COVER_BELOW` | was unter der Gehäuseunterkante verdeckt werden soll: Klemmen + Kabelbogen + Wandöffnung | 40 mm |
+| Parameter | Bedeutung | Vorgabe | Zugabe | Ergebnis |
+|---|---|---|---|---|
+| `CLEAR_W` | lichte Breite = Breite der montierten Einheit | **≥ 170 mm** | 5 mm je Seite | 180 mm |
+| `CLEAR_DROP` | Abdeckung ab Oberkante Gerät nach unten | **≥ 160 mm** | 5 mm | 165 mm |
+| `CLEAR_D` | lichte Tiefe: Wand → Frontfläche des Gerätes | **≥ 25 mm** | 7 mm | 32 mm |
+
+Daraus ergibt sich die Haube mit **186 × 177 × 37 mm** außen.
 
 **Faustregel:** im Zweifel großzügig aufrunden.
 
-- `CASE_W` zu groß → Haube wird unauffällig breiter, passt aber sicher.
-- `CASE_D` zu groß → Haube steht ein paar Millimeter weiter von der Wand ab.
-  `CASE_D` zu **klein** ist der einzige echte Fehler: dann liegt der hintere
+- `CLEAR_W` / `CLEAR_DROP` zu groß → Haube wird unauffällig größer, passt aber
+  sicher.
+- `CLEAR_D` zu groß → Haube steht ein paar Millimeter weiter von der Wand ab.
+  `CLEAR_D` zu **klein** ist der einzige echte Fehler: dann liegt der hintere
   Rand nicht an der Wand an und die Haube wackelt.
-- `CASE_H` / `COVER_BELOW` sind unkritisch – sie bestimmen nur, wie weit die
-  Schürze nach unten reicht.
+- `CASE_H` (100 mm) ist rein informativ und wird nur für die Ausgabe „so viel
+  liegt unterhalb der Geräteunterkante“ verwendet.
 
 ## Konstruktion
 
-- **Außenmaß mit den Voreinstellungen:** 188 × 162 × 48,5 mm (B × H × T),
+- **Außenmaß mit den Voreinstellungen:** 186 × 177 × 37 mm (B × H × T),
   Wandstärke 3 mm, Kantenradius 8 mm, Frontfase 1,5 mm.
-  Innenraum 182 × 152 mm, nutzbare Tiefe 42,5 mm.
+  Lichter Innenraum 180 mm breit, 165 mm ab Geräteoberkante nach unten,
+  32 mm tief.
 - Die Haube **hängt über zwei lange Innenrippen auf der Gehäuseoberseite** –
   kein Werkzeug, keine zusätzlichen Löcher in der Wand. Die Rippen laufen fast
-  über die gesamte Tiefe, damit sie das Gehäuse auch dann sicher treffen, wenn
-  `CASE_D` großzügig geschätzt wurde. Der hintere Rand liegt an der Wand an und
-  verhindert das Kippen.
+  über die gesamte Tiefe (7,5–33 mm), damit sie das Gehäuse auch dann sicher
+  treffen, wenn `CLEAR_D` großzügig geschätzt wurde. Sie sitzen bei ±52 mm in
+  den Stegen zwischen zwei Lüftungsschlitzen. Der hintere Rand liegt an der
+  Wand an und verhindert das Kippen.
 - **5 mm seitliches Spiel** pro Seite: Damit passt die Haube auch über einen
   seitlich überstehenden Klemmverbinder (z. B. Wago) und über abgehende Kabel.
   Die hinteren Zentrierrippen sitzen bewusst nur im **oberen** Bereich, damit
   sie unten abgehende Leitungen nicht berühren.
-- Die Schürze reicht mit den Voreinstellungen **50 mm unter die
-  Gehäuseunterkante** (`COVER_BELOW` + 10 mm Reserve) und verdeckt damit
+- Die Haube reicht **165 mm ab Geräteoberkante nach unten** – bei einem
+  100 mm hohen Gehäuse also 65 mm unter dessen Unterkante. Das verdeckt
   Klemmleisten, Kabelbogen und die Wandöffnung.
 - **Lüftungsschlitze** sitzen von vorn unsichtbar: unten vorn (Einlass) und
   oben nahe der Wand (Auslass) – natürliche Konvektion.
@@ -74,7 +79,8 @@ die Werte oben im Makro (Block *MONTIERTE EINHEIT*) eintragen:
 | Perimeter / Infill | 3 Wände, 15 % | 3 Wände, 15–20 % |
 | Material | PETG oder ASA (draußen), PLA (innen) | dito, gern Kontrastfarbe |
 
-Benötigtes Druckbett: mind. **192 × 166 mm** (mit den Voreinstellungen).
+Benötigtes Druckbett: mind. **190 × 181 mm** (mit den Voreinstellungen).
+Ein 180 × 180 mm großes Bett (z. B. Bambu A1 mini) reicht dafür **nicht**.
 Die große, flache Frontplatte gern mit Brim drucken – sie neigt sonst zum
 Verziehen.
 
@@ -101,14 +107,16 @@ Zum Warten einfach nach vorn abziehen.
 
 Alle Maße stehen als Parameter am Anfang des Makros, u. a.:
 
-- `CASE_W`, `CASE_H`, `CASE_D`, `COVER_BELOW` (siehe oben)
+- `CLEAR_W`, `CLEAR_DROP`, `CLEAR_D` und die Zugaben `ADD_W`, `ADD_DROP`,
+  `ADD_D` (siehe oben)
 - `TEXT`, `TEXT_SIZE`, `TEXT_RELIEF`, `TEXT_STYLE` (`"raised"`/`"engraved"`),
   `TEXT_Y_OFF` (Schriftzug aus der Mitte verschieben),
   `FONT` (eigener .ttf-Pfad; Standard: Arial Rounded Bold)
-- `CLEAR_SIDE`, `RIB_H`, `SKIRT_EXTRA` (Passung und Sitz)
-- `VENT_SLOTS`, `CABLE_SLOT_W`
+- `RIB_H`, `RIB_X`, `RIB_W`, `CRIB_LEN` (Sitz und Führung)
+- `VENT_SLOTS`, `VENT_L`, `VENT_PITCH_GAP`, `CABLE_SLOT_W`
 - `WALL`, `R_OUT`, `CHAMFER_F` (Optik)
 
 Nach Änderungen das Makro einfach erneut ausführen (in FreeCAD oder per
 `freecadcmd OpenSprinklerCover.FCMacro`) – FCStd und STLs werden neu erzeugt.
-Am Ende gibt das Makro die resultierenden Außen-, Innen- und Bettmaße aus.
+Am Ende gibt das Makro die resultierenden Maße aus und stellt den geforderten
+Mindestmaßen die tatsächlichen Werte gegenüber.

@@ -20,9 +20,10 @@ Aufhaengung: Die Haube haengt mit zwei langen Innenrippen auf der Oberseite
 des Gehaeuses und liegt hinten an der Wand an - werkzeuglos, keine neuen
 Loecher in der Wand.
 
-WICHTIG - vor dem Druck die vier Werte im Block "MONTIERTE EINHEIT"
-nachmessen. Faustregel: lieber etwas zu gross als zu klein, die Haube wird
-davon nur unauffaellig groesser, aber sie passt sicher darueber.
+Die Groesse wird ueber drei Mindestmasse gesteuert (Block MINDESTMASSE):
+lichte Breite, Abdeckung nach unten und lichte Tiefe. Die Zugaben darunter
+werden auf diese Mindestmasse aufgeschlagen - die geforderten Werte sind
+also garantiert eingehalten.
 
 Verwendung:
   - In FreeCAD:  Makro -> Makros... -> ausfuehren, oder
@@ -38,25 +39,30 @@ from FreeCAD import Vector
 # PARAMETER (alle Angaben in mm)
 # =========================================================================
 
-# --- MONTIERTE EINHEIT (bitte am eigenen Geraet nachmessen) --------------
-# Die Werte beschreiben nicht die Platine, sondern das, was tatsaechlich an
-# der Wand haengt - inklusive gedrucktem Gehaeuse, Rueckplatte und Laschen.
-CASE_W = 172.0   # groesste Breite (ueber die Wand-Montagelaschen gemessen)
-CASE_H = 100.0   # Hoehe des Gehaeusekoerpers, ohne die Klemmleisten
-CASE_D = 42.0    # Tiefe: Wandoberflaeche -> Frontflaeche des Gehaeuses.
-                 # Im Zweifel 3-5 mm aufschlagen: zu tief = Haube steht
-                 # etwas weiter vor, zu flach = Haube liegt nicht an der Wand.
-COVER_BELOW = 40.0  # was unterhalb der Gehaeuseunterkante verdeckt werden
-                 # soll: Klemmleisten + Kabelbogen + Wanddurchbruch,
-                 # gemessen ab Gehaeuseunterkante bis unter das Wandloch.
+# --- MINDESTMASSE (am montierten Geraet gemessen) ------------------------
+# Beschreiben den Raum, den die Haube ueberdecken muss - nicht die Haube
+# selbst. Die Haube faellt entsprechend groesser aus.
+CLEAR_W    = 170.0  # min. lichte Breite = Breite der montierten Einheit
+CLEAR_DROP = 160.0  # min. Abdeckung ab Oberkante Geraet nach unten
+                    # (Gehaeuse + Klemmen + Kabel + Wandoeffnung)
+CLEAR_D    = 25.0   # min. lichte Tiefe: Wand -> Frontflaeche des Geraetes
 
-# --- Passung / Haube ------------------------------------------------------
-CLEAR_SIDE   = 5.0   # seitliches Spiel links/rechts. 5 mm deckt auch einen
-                     # seitlich ueberstehenden Klemmverbinder (Wago) ab.
-CLEAR_DEPTH  = 1.5   # Luft zwischen Gehaeusefront und Frontplatten-Falz
+# --- Zugaben auf die Mindestmasse ----------------------------------------
+ADD_W      = 5.0   # zusaetzliches Spiel je Seite (deckt seitlich
+                   # ueberstehende Klemmverbinder / abgehende Kabel ab)
+ADD_DROP   = 5.0   # zusaetzliche Abdeckung nach unten
+ADD_D      = 7.0   # zusaetzliche Tiefe (Kabelbogen aus der Wand, Toleranz).
+                   # Zu tief = Haube steht etwas weiter vor (harmlos).
+                   # Zu flach = hinterer Rand liegt nicht an der Wand an.
+
+CASE_H     = 100.0 # nur informativ: Hoehe des Geraetekoerpers ohne Klemmen,
+                   # wird nur fuer die Ausgabe am Ende verwendet
+
+# --- Haube ---------------------------------------------------------------
 RIB_H        = 2.0   # Hoehe der Auflagerippen (Haube haengt damit auf dem
                      # Gehaeuse; groesser = Haube sitzt hoeher)
-SKIRT_EXTRA  = 10.0  # Zugabe unter COVER_BELOW (Reserve / Optik)
+RIB_X        = 52.0  # Abstand der Auflagerippen von der Mitte
+RIB_W        = 4.0   # Breite der Auflagerippen
 WALL         = 3.0   # Wandstaerke
 R_OUT        = 8.0   # Aussenradius der senkrechten Kanten
 R_IN         = 5.0   # Innenradius (Falz / Frontplatte)
@@ -64,6 +70,9 @@ CHAMFER_F    = 1.5   # Fase an der vorderen Aussenkante
 SEAT_DEPTH   = 4.5   # Falztiefe fuer die Frontplatte
 LEDGE        = 2.0   # Auflagesteg-Breite fuer die Frontplatte (oben+unten)
 BACK_GAP     = 0.5   # Luft zwischen Gehaeuserueckseite und Wandanlage
+CRIB_TOP_OFF = 8.0   # Zentrierrippen hinten: Abstand von der Geraeteoberkante
+CRIB_LEN     = 52.0  # Laenge der Zentrierrippen (bleiben im oberen Bereich,
+                     # damit sie unten abgehende Kabel nicht beruehren)
 
 # --- Frontplatte ---
 PLATE_T      = 3.0   # Plattendicke
@@ -90,8 +99,9 @@ FONT = ""            # optional: eigenen Font-Pfad hier fest eintragen
 VENT_SLOTS     = 6     # Anzahl Lueftungsschlitze oben und unten (0 = keine)
 VENT_L         = 20.0  # Schlitzlaenge
 VENT_W         = 4.0   # Schlitzbreite
+VENT_PITCH_GAP = 6.0   # Steg zwischen zwei Schlitzen
 CABLE_SLOT_W   = 150.0 # Breite des Kabelschlitzes unten hinten
-CABLE_SLOT_D   = 18.0  # Tiefe des Kabelschlitzes (von der Wand aus)
+CABLE_SLOT_D   = 16.0  # Tiefe des Kabelschlitzes (von der Wand aus)
 
 # --- Export ---
 EXPORT = True        # STL + FCStd neben dem Makro ablegen
@@ -100,24 +110,23 @@ EXPORT = True        # STL + FCStd neben dem Makro ablegen
 # ABGELEITETE MASSE
 # =========================================================================
 
-SKIRT  = COVER_BELOW + SKIRT_EXTRA          # Schuerze unter dem Gehaeuse
-IN_W   = CASE_W + 2 * CLEAR_SIDE            # Innenbreite Kavitaet
-IN_H   = CASE_H + RIB_H + SKIRT             # Innenhoehe Kavitaet
+IN_W    = CLEAR_W + 2 * ADD_W               # lichte Breite
+DROP    = CLEAR_DROP + ADD_DROP             # Abdeckung ab Geraeteoberkante
+INNER_D = CLEAR_D + ADD_D                   # lichte Tiefe
+IN_H    = RIB_H + DROP                      # Innenhoehe Kavitaet
+
 SEAT_W = IN_W                               # Falz = vordere Oeffnung
 SEAT_H = IN_H + 2 * LEDGE
 OUT_W  = IN_W + 2 * WALL                    # Aussenmasse
 OUT_H  = SEAT_H + 2 * WALL
-DEPTH  = SEAT_DEPTH + CLEAR_DEPTH + CASE_D + BACK_GAP
+DEPTH  = SEAT_DEPTH + INNER_D + BACK_GAP
 
 xi, yi = IN_W / 2.0, IN_H / 2.0             # Kavitaet-Halbmasse
 xs, ys = SEAT_W / 2.0, SEAT_H / 2.0         # Falz-Halbmasse
 xo, yo = OUT_W / 2.0, OUT_H / 2.0           # Aussen-Halbmasse
 
-# Lage des Gehaeuses in der Kavitaet (Haube haengt auf der Gehaeuseoberseite)
-Y_CASE_TOP = yi - RIB_H
-Y_CASE_BOT = Y_CASE_TOP - CASE_H
+Y_CASE_TOP = yi - RIB_H                     # Oberkante des Geraetes
 Z_WALL     = DEPTH - BACK_GAP               # Ebene der Wand
-Z_CASE_FRT = Z_WALL - CASE_D                # Frontflaeche des Gehaeuses
 
 PLATE_W = SEAT_W - 2 * PLATE_CLEAR
 PLATE_H = SEAT_H - 2 * PLATE_CLEAR
@@ -137,6 +146,15 @@ def rounded_box(w, h, d, r):
         if abs(v0.x - v1.x) < 1e-6 and abs(v0.y - v1.y) < 1e-6:
             edges.append(e)
     return b.makeFillet(r, edges)
+
+
+def vent_spans():
+    """x-Bereiche der Lueftungsschlitze."""
+    if VENT_SLOTS <= 0:
+        return []
+    pitch = VENT_L + VENT_PITCH_GAP
+    x0 = -(VENT_SLOTS * pitch - VENT_PITCH_GAP) / 2.0
+    return [(x0 + i * pitch, x0 + i * pitch + VENT_L) for i in range(VENT_SLOTS)]
 
 
 def find_font():
@@ -189,28 +207,6 @@ for sign in (+1, -1):
             break
     frame = frame.fuse(bar)
 
-# Auflagerippen an der Deckenwand: die Haube haengt damit auf dem Gehaeuse.
-# Sie laufen fast ueber die gesamte Tiefe, damit sie das Gehaeuse auch dann
-# sicher treffen, wenn CASE_D grosszuegig geschaetzt wurde.
-RIB_Z0 = SEAT_DEPTH + 3.0
-RIB_Z1 = DEPTH - 18.0
-for x in (-40.0, 40.0):
-    rib = Part.makeBox(4.0, RIB_H, RIB_Z1 - RIB_Z0)
-    rib.translate(Vector(x - 2.0, yi - RIB_H, RIB_Z0))
-    frame = frame.fuse(rib)
-
-# Seitliche Zentrierrippen hinten (fuehren die Haube an den Montagelaschen).
-# Bewusst nur im oberen Bereich, damit sie seitlich abgehende Kabel oder
-# Klemmverbinder im unteren Bereich nicht beruehren.
-rib_t = min(CLEAR_SIDE - 0.55, 3.0)
-cr_y0 = Y_CASE_BOT + 0.45 * CASE_H
-cr_len = (Y_CASE_TOP - 5.0) - cr_y0
-for sign in (+1, -1):
-    rib = Part.makeBox(rib_t + 0.01, cr_len, 8.0)
-    x0 = xi - rib_t if sign > 0 else -xi - 0.01
-    rib.translate(Vector(x0, cr_y0, DEPTH - 12.0))
-    frame = frame.fuse(rib)
-
 frame = frame.removeSplitter()
 
 # Kabelschlitz unten hinten (falls doch eine Leitung nach unten/hinten aus
@@ -222,18 +218,47 @@ frame = frame.cut(slot)
 # Lueftungsschlitze (von vorn unsichtbar): unten vorn = Einlass,
 # oben hinten = Auslass
 if VENT_SLOTS > 0:
-    pitch = VENT_L + 6.0
-    x_start = -(VENT_SLOTS * pitch - 6.0) / 2.0
     cuts = []
-    for i in range(VENT_SLOTS):
-        x = x_start + i * pitch
-        v = Part.makeBox(VENT_L, 8.0, VENT_W)          # unten
-        v.translate(Vector(x, -yo - 1.5, 12.0))
+    for a, b in vent_spans():
+        v = Part.makeBox(b - a, 8.0, VENT_W)           # unten
+        v.translate(Vector(a, -yo - 1.5, 12.0))
         cuts.append(v)
-        v = Part.makeBox(VENT_L, 8.0, VENT_W)          # oben
-        v.translate(Vector(x, yi - 0.5, DEPTH - 16.0))
+        v = Part.makeBox(b - a, 8.0, VENT_W)           # oben
+        v.translate(Vector(a, yi - 0.5, DEPTH - 16.0))
         cuts.append(v)
     frame = frame.cut(Part.makeCompound(cuts))
+
+# Auflagerippen an der Deckenwand: die Haube haengt damit auf dem Gehaeuse.
+# Sie laufen fast ueber die gesamte Tiefe, damit sie das Gehaeuse auch dann
+# sicher treffen, wenn die Tiefe grosszuegig geschaetzt wurde. Sie werden
+# erst nach den Schlitzen angebaut und liegen in den Stegen zwischen zwei
+# Lueftungsschlitzen.
+RIB_Z0 = SEAT_DEPTH + 3.0
+RIB_Z1 = DEPTH - 4.0
+for x in (-RIB_X, RIB_X):
+    for a, b in vent_spans():
+        if x + RIB_W / 2.0 > a and x - RIB_W / 2.0 < b:
+            App.Console.PrintWarning(
+                "Auflagerippe bei x=%.1f liegt unter einem Lueftungsschlitz "
+                "- RIB_X anpassen.\n" % x)
+            break
+    rib = Part.makeBox(RIB_W, RIB_H, RIB_Z1 - RIB_Z0)
+    rib.translate(Vector(x - RIB_W / 2.0, yi - RIB_H, RIB_Z0))
+    frame = frame.fuse(rib)
+
+# Seitliche Zentrierrippen hinten (fuehren die Haube an den Montagelaschen).
+# Bewusst nur im oberen Bereich, damit sie seitlich abgehende Kabel oder
+# Klemmverbinder im unteren Bereich nicht beruehren.
+rib_t = min(ADD_W - 0.55, 3.0)
+cr_y1 = Y_CASE_TOP - CRIB_TOP_OFF
+cr_y0 = cr_y1 - CRIB_LEN
+for sign in (+1, -1):
+    rib = Part.makeBox(rib_t + 0.01, CRIB_LEN, 8.0)
+    x0 = xi - rib_t if sign > 0 else -xi - 0.01
+    rib.translate(Vector(x0, cr_y0, DEPTH - 12.0))
+    frame = frame.fuse(rib)
+
+frame = frame.removeSplitter()
 
 # Fase an der vorderen Aussenkante (Optik) + kleine Fase am Falzrand
 front_outer, front_inner = [], []
@@ -344,11 +369,17 @@ if EXPORT:
     App.Console.PrintMessage("Export nach %s abgeschlossen.\n" % out_dir)
 
 App.Console.PrintMessage(
-    "Haube aussen : %.1f x %.1f x %.1f mm (B x H x T)\n" % (OUT_W, OUT_H, DEPTH))
+    "Haube aussen  : %.1f x %.1f x %.1f mm (B x H x T)\n"
+    % (OUT_W, OUT_H, DEPTH))
 App.Console.PrintMessage(
-    "Kavitaet     : %.1f x %.1f mm, nutzbare Tiefe %.1f mm\n"
-    % (IN_W, IN_H, DEPTH - SEAT_DEPTH - CLEAR_DEPTH))
+    "Lichte Weite  : %.1f mm  (gefordert min. %.1f)\n" % (IN_W, CLEAR_W))
 App.Console.PrintMessage(
-    "Schuerze     : %.1f mm unter der Gehaeuseunterkante\n" % SKIRT)
+    "Abdeckung ab Oberkante nach unten: %.1f mm  (gefordert min. %.1f)\n"
+    % (DROP, CLEAR_DROP))
 App.Console.PrintMessage(
-    "Druckbett    : mind. %.0f x %.0f mm\n" % (OUT_W + 4, OUT_H + 4))
+    "Lichte Tiefe  : %.1f mm  (gefordert min. %.1f)\n" % (INNER_D, CLEAR_D))
+App.Console.PrintMessage(
+    "davon unter der Geraeteunterkante (bei CASE_H=%.0f): %.1f mm\n"
+    % (CASE_H, DROP - CASE_H))
+App.Console.PrintMessage(
+    "Druckbett     : mind. %.0f x %.0f mm\n" % (OUT_W + 4, OUT_H + 4))
